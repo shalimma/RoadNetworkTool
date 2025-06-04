@@ -11,7 +11,7 @@
  * Builder for URoadNetworkToolSimpleTool
  */
 UCLASS()
-class ROADNETWORKTOOL_API URoadNetworkToolSimpleToolBuilder : public UInteractiveToolBuilder
+class ROADNETWORKTOOLEDITOR_API URoadNetworkToolSimpleToolBuilder : public UInteractiveToolBuilder
 {
 	GENERATED_BODY()
 
@@ -27,7 +27,7 @@ public:
  * which provides an OnModified delegate that the Tool will listen to for changes in property values.
  */
 UCLASS(Transient)
-class ROADNETWORKTOOL_API URoadNetworkToolSimpleToolProperties : public UInteractiveToolPropertySet
+class ROADNETWORKTOOLEDITOR_API URoadNetworkToolSimpleToolProperties : public UInteractiveToolPropertySet
 {
 	GENERATED_BODY()
 public:
@@ -46,7 +46,7 @@ public:
  * clicks left mouse button. All the action is in the ::OnClicked handler.
  */
 UCLASS()
-class ROADNETWORKTOOL_API URoadNetworkToolSimpleTool : public USingleClickTool
+class ROADNETWORKTOOLEDITOR_API URoadNetworkToolSimpleTool : public USingleClickTool
 {
 	GENERATED_BODY()
 

@@ -16,9 +16,26 @@
 	"Installed": false,
 	"Modules": [
 		{
-			"Name": "RoadNetworkTool",
+			"Name": "RoadNetworkToolEditor",
 			"Type": "Editor",
 			"LoadingPhase": "Default"
+			"PlatformAllowList": [
+				"Win64"
+			]
+		},
+		{
+			"Name": "RoadNetworkTool",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+			"PlatformAllowList": [
+				"Win64"
+			]
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "ProceduralMeshComponent",
+			"Enabled": true
 		}
 	]
 }

@@ -18,6 +18,9 @@ void FRoadNetworkToolEditorModeCommands::RegisterCommands()
 {
 	TArray <TSharedPtr<FUICommandInfo>>& ToolCommands = Commands.FindOrAdd(NAME_Default);
 
+	UI_COMMAND(LineTool, "Linker", "Click to set the origin, then click to extend the line", EUserInterfaceActionType::ToggleButton, FInputChord());
+	ToolCommands.Add(LineTool);
+
 	UI_COMMAND(SimpleTool, "Show Actor Info", "Opens message box with info about a clicked actor", EUserInterfaceActionType::Button, FInputChord());
 	ToolCommands.Add(SimpleTool);
 
