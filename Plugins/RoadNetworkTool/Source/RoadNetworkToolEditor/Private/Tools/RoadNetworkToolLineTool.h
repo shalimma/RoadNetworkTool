@@ -4,14 +4,14 @@
 
 #include "InteractiveToolBuilder.h"
 #include "BaseTools/ClickDragTool.h"
-#include "RoadNetworkToolInteractiveTool.generated.h"
+#include "RoadNetworkToolLineTool.generated.h"
 
 
 /**
- * Builder for URoadNetworkToolInteractiveTool
+ * Builder for URoadNetworkToolLineTool
  */
 UCLASS()
-class ROADNETWORKTOOLEDITOR_API URoadNetworkToolInteractiveToolBuilder : public UInteractiveToolBuilder
+class ROADNETWORKTOOLEDITOR_API URoadNetworkToolLineToolBuilder : public UInteractiveToolBuilder
 {
 	GENERATED_BODY()
 
@@ -22,15 +22,15 @@ public:
 
 
 /**
- * Property set for the URoadNetworkToolInteractiveTool
+ * Property set for the URoadNetworkToolLineTool
  */
 UCLASS(Transient)
-class ROADNETWORKTOOLEDITOR_API URoadNetworkToolInteractiveToolProperties : public UInteractiveToolPropertySet
+class ROADNETWORKTOOLEDITOR_API URoadNetworkToolLineToolProperties : public UInteractiveToolPropertySet
 {
 	GENERATED_BODY()
 
 public:
-	URoadNetworkToolInteractiveToolProperties();
+	URoadNetworkToolLineToolProperties();
 
 	/** First point of measurement */
 	UPROPERTY(EditAnywhere, Category = Options)
@@ -48,12 +48,12 @@ public:
 
 
 /**
- * URoadNetworkToolInteractiveTool is an example Tool that allows the user to measure the 
+ * URoadNetworkToolLineTool is an example Tool that allows the user to measure the 
  * distance between two points. The first point is set by click-dragging the mouse, and
  * the second point is set by shift-click-dragging the mouse.
  */
 UCLASS()
-class ROADNETWORKTOOLEDITOR_API URoadNetworkToolInteractiveTool : public UInteractiveTool, public IClickDragBehaviorTarget
+class ROADNETWORKTOOLEDITOR_API URoadNetworkToolLineTool : public UInteractiveTool, public IClickDragBehaviorTarget
 {
 	GENERATED_BODY()
 
@@ -80,7 +80,7 @@ public:
 protected:
 	/** Properties of the tool are stored here */
 	UPROPERTY()
-	TObjectPtr<URoadNetworkToolInteractiveToolProperties> Properties;
+	TObjectPtr<URoadNetworkToolLineToolProperties> Properties;
 
 
 protected:

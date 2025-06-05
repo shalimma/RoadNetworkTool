@@ -15,6 +15,7 @@
 ////////////////////////////////////////////////////////////////////////// 
 #include "Tools/RoadNetworkToolSimpleTool.h"
 #include "Tools/RoadNetworkToolInteractiveTool.h"
+#include "Tools/RoadNetworkToolLineTool.h"
 
 // step 2: register a ToolBuilder in FRoadNetworkToolEditorMode::Enter() below
 
@@ -23,6 +24,7 @@
 
 const FEditorModeID URoadNetworkToolEditorMode::EM_RoadNetworkToolEditorModeId = TEXT("EM_RoadNetworkToolEditorMode");
 
+FString URoadNetworkToolEditorMode::LineToolName = TEXT("RoadNetworkTool_RoadCreationTool");
 FString URoadNetworkToolEditorMode::SimpleToolName = TEXT("RoadNetworkTool_ActorInfoTool");
 FString URoadNetworkToolEditorMode::InteractiveToolName = TEXT("RoadNetworkTool_MeasureDistanceTool");
 
@@ -60,6 +62,7 @@ void URoadNetworkToolEditorMode::Enter()
 	////////////////////////////////////////////////////////////////////////// 
 	const FRoadNetworkToolEditorModeCommands& SampleToolCommands = FRoadNetworkToolEditorModeCommands::Get();
 
+	RegisterTool(SampleToolCommands.LineTool, LineToolName, NewObject<URoadNetworkToolLineToolBuilder>(this));
 	RegisterTool(SampleToolCommands.SimpleTool, SimpleToolName, NewObject<URoadNetworkToolSimpleToolBuilder>(this));
 	RegisterTool(SampleToolCommands.InteractiveTool, InteractiveToolName, NewObject<URoadNetworkToolInteractiveToolBuilder>(this));
 

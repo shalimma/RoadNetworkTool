@@ -21,6 +21,7 @@ class URoadNetworkToolEditorMode : public UEdMode
 public:
 	const static FEditorModeID EM_RoadNetworkToolEditorModeId;
 
+	static FString LineToolName;
 	static FString SimpleToolName;
 	static FString InteractiveToolName;
 
