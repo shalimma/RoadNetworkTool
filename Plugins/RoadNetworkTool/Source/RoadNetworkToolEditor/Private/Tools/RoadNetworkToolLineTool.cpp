@@ -154,9 +154,14 @@ void URoadNetworkToolLineTool::OnClickPress(const FInputDeviceRay& PressPos)
         if (GetNearSplinePoint(ClickLocation, NearPointIndex, NearPointLocation, Properties->SnapThreshold))
         {
             OriginPoint = NearPointLocation;
+        }
+        else
+        {
+            OriginPoint = ClickLocation; // fallback to raw click
+        }
             DrawDebugSphereEditor(OriginPoint);
             CurrentSplineState = ESplineCreationState::SettingEndPoint;
-        }
+        
     }
 }
 
