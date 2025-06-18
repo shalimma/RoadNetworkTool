@@ -6,6 +6,7 @@
 #include "InteractiveToolManager.h"
 #include "RoadNetworkToolEditorModeCommands.h"
 #include "Modules/ModuleManager.h"
+#include "RoadNetworkTool/Public/RoadHelper.h"
 
 
 //////////////////////////////////////////////////////////////////////////
@@ -78,6 +79,11 @@ void URoadNetworkToolEditorMode::CreateToolkit()
 TMap<FName, TArray<TSharedPtr<FUICommandInfo>>> URoadNetworkToolEditorMode::GetModeCommands() const
 {
 	return FRoadNetworkToolEditorModeCommands::Get().GetCommands();
+}
+
+bool URoadNetworkToolEditorMode::IsSelectionAllowed(AActor* InActor, bool bInSelected) const
+{
+	return FRoadHelper::IsRoadActor(InActor);
 }
 
 #undef LOCTEXT_NAMESPACE

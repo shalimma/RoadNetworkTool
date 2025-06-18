@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "CoreMinimal.h"
 #include "Tools/UEdMode.h"
 #include "RoadNetworkToolEditorMode.generated.h"
 
@@ -16,21 +17,24 @@
 UCLASS()
 class URoadNetworkToolEditorMode : public UEdMode
 {
-	GENERATED_BODY()
+    GENERATED_BODY()
 
 public:
-	const static FEditorModeID EM_RoadNetworkToolEditorModeId;
+    const static FEditorModeID EM_RoadNetworkToolEditorModeId;
 
-	static FString LineToolName;
-	static FString SimpleToolName;
-	static FString InteractiveToolName;
+    static FString LineToolName;
+    static FString SimpleToolName;
+    static FString InteractiveToolName;
 
-	URoadNetworkToolEditorMode();
-	virtual ~URoadNetworkToolEditorMode();
+    URoadNetworkToolEditorMode();
+    virtual ~URoadNetworkToolEditorMode();
 
-	/** UEdMode interface */
-	virtual void Enter() override;
-	virtual void ActorSelectionChangeNotify() override;
-	virtual void CreateToolkit() override;
-	virtual TMap<FName, TArray<TSharedPtr<FUICommandInfo>>> GetModeCommands() const override;
+    /** UEdMode interface */
+    virtual void Enter() override;
+    virtual void ActorSelectionChangeNotify() override;
+    virtual void CreateToolkit() override;
+    virtual TMap<FName, TArray<TSharedPtr<FUICommandInfo>>> GetModeCommands() const override;
+
+    /** Custom functions to manage selection behavior */
+    virtual bool IsSelectionAllowed(AActor* InActor, bool bInSelected) const override;
 };

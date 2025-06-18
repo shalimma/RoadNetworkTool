@@ -4,21 +4,32 @@ using UnrealBuildTool;
 
 public class RoadNetworkTool : ModuleRules
 {
-	public RoadNetworkTool(ReadOnlyTargetRules Target) : base(Target)
-	{
-		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;	
-		
-		PublicDependencyModuleNames.AddRange(
-			new string[]
-			{
-				"Core",
-				"CoreUObject",
-				"Engine",
-				"InputCore",
-				"EnhancedInput"
-				// ... add other public dependencies that you statically link with here ...
-			}
-			);
-		
-	}
+    public RoadNetworkTool(ReadOnlyTargetRules Target) : base(Target)
+    {
+        PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
+
+        PublicDependencyModuleNames.AddRange(
+            new string[] {
+                "Core",
+                "CoreUObject",
+                "Engine",
+                "RenderCore",
+                "ProceduralMeshComponent"
+            }
+        );
+
+        PrivateDependencyModuleNames.AddRange(
+            new string[] {
+                "Slate",
+                "SlateCore",
+                "InputCore"
+            }
+        );
+
+        // Only include UnrealEd if building for the editor
+        if (Target.bBuildEditor)
+        {
+            PrivateDependencyModuleNames.Add("UnrealEd");
+        }
+    }
 }

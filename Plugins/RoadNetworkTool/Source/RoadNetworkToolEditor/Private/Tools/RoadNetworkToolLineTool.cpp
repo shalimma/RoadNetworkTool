@@ -30,6 +30,27 @@ UInteractiveTool* URoadNetworkToolLineToolBuilder::BuildTool(const FToolBuilderS
 
 URoadNetworkToolLineToolProperties::URoadNetworkToolLineToolProperties()
 {
+    if (GConfig)
+    {
+        // Load values from the config file
+        GConfig->GetFloat(TEXT("/Script/RoadNetworkTool.URoadNetworkToolLineToolProperties"), TEXT("Width"), Width, GEditorPerProjectIni);
+        GConfig->GetFloat(TEXT("/Script/RoadNetworkTool.URoadNetworkToolLineToolProperties"), TEXT("Thickness"), Thickness, GEditorPerProjectIni);
+        GConfig->GetBool(TEXT("/Script/RoadNetworkTool.URoadNetworkToolLineToolProperties"), TEXT("EnableDebugLine"), EnableDebugLine, GEditorPerProjectIni);
+        GConfig->GetFloat(TEXT("/Script/RoadNetworkTool.URoadNetworkToolLineToolProperties"), TEXT("SnapThreshold"), SnapThreshold, GEditorPerProjectIni);
+    }
+}
+
+void URoadNetworkToolLineToolProperties::SaveConfiguration() const
+{
+    if (GConfig)
+    {
+        GConfig->SetFloat(TEXT("/Script/RoadNetworkTool.URoadNetworkToolLineToolProperties"), TEXT("Width"), Width, GEditorPerProjectIni);
+        GConfig->SetFloat(TEXT("/Script/RoadNetworkTool.URoadNetworkToolLineToolProperties"), TEXT("Thickness"), Thickness, GEditorPerProjectIni);
+        GConfig->SetBool(TEXT("/Script/RoadNetworkTool.URoadNetworkToolLineToolProperties"), TEXT("EnableDebugLine"), EnableDebugLine, GEditorPerProjectIni);
+        GConfig->SetFloat(TEXT("/Script/RoadNetworkTool.URoadNetworkToolLineToolProperties"), TEXT("SnapThreshold"), SnapThreshold, GEditorPerProjectIni);
+
+        GConfig->Flush(false, GEditorPerProjectIni);
+    }
 }
 
 void URoadNetworkToolLineTool::SetWorld(UWorld* World)
@@ -366,6 +387,7 @@ void URoadNetworkToolLineTool::OnPropertyModified(UObject* PropertySet, FPropert
             ApplyProperties(FoundSplineActor);
         }
     }
+    Properties->SaveConfiguration();
 }
 
 ARoadActor* URoadNetworkToolLineTool::GetFirstRoadActor(UWorld* World)

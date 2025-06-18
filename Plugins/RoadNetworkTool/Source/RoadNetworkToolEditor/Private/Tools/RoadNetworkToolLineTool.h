@@ -32,6 +32,7 @@ class ROADNETWORKTOOLEDITOR_API URoadNetworkToolLineToolProperties : public UInt
 
 public:
     URoadNetworkToolLineToolProperties();
+    void SaveConfiguration() const;
 
     UPROPERTY(EditAnywhere, Category = "New Road Network")
     bool EnableDebugLine = true;

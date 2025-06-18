@@ -21,6 +21,7 @@ public:
     TArray<USplineComponent*> SplineComponents;
 
     void AddSplineComponent(USplineComponent* SplineComponent);
+
     const TArray<USplineComponent*>& GetSplineComponents() const;
 
 protected:

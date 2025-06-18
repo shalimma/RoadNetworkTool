@@ -1,4 +1,5 @@
 #include "RoadActor.h"
+#include "RoadHelper.h"
 
 bool ARoadActor::EnableRoadDebugLine = false;
 float ARoadActor::RoadWidth = 500.0f;
