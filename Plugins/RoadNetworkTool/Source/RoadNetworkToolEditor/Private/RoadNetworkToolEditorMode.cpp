@@ -53,27 +53,35 @@ void URoadNetworkToolEditorMode::ActorSelectionChangeNotify()
 
 void URoadNetworkToolEditorMode::Enter()
 {
-	UEdMode::Enter();
+    UEdMode::Enter();
 
-	//////////////////////////////////////////////////////////////////////////
-	//////////////////////////////////////////////////////////////////////////
-	// AddYourTool Step 2 - register the ToolBuilders for your Tools here.
-	// The string name you pass to the ToolManager is used to select/activate your ToolBuilder later.
-	//////////////////////////////////////////////////////////////////////////
-	////////////////////////////////////////////////////////////////////////// 
-	const FRoadNetworkToolEditorModeCommands& SampleToolCommands = FRoadNetworkToolEditorModeCommands::Get();
+    ////////////////////////////////////////////////////
+    // AddYourTool Step 2 - register the ToolBuilder for your tools here.
+    // The string name you pass to the ToolManager is used to select/activate your ToolBuilder later.
+    ////////////////////////////////////////////////////
+    const FRoadNetworkToolEditorModeCommands& SampleToolCommands = FRoadNetworkToolEditorModeCommands::Get();
 
-	RegisterTool(SampleToolCommands.LineTool, LineToolName, NewObject<URoadNetworkToolLineToolBuilder>(this));
-	RegisterTool(SampleToolCommands.SimpleTool, SimpleToolName, NewObject<URoadNetworkToolSimpleToolBuilder>(this));
-	RegisterTool(SampleToolCommands.InteractiveTool, InteractiveToolName, NewObject<URoadNetworkToolInteractiveToolBuilder>(this));
+    RegisterTool(SampleToolCommands.LineTool, LineToolName, NewObject<URoadNetworkToolLineToolBuilder>(this));
+    RegisterTool(SampleToolCommands.SimpleTool, SimpleToolName, NewObject<URoadNetworkToolSimpleToolBuilder>(this));
+    RegisterTool(SampleToolCommands.InteractiveTool, InteractiveToolName, NewObject<URoadNetworkToolInteractiveToolBuilder>(this));
 
-	// active tool type is not relevant here, we just set to default
-	GetToolManager()->SelectActiveToolType(EToolSide::Left, SimpleToolName);
+    // active tool type is not relevant here, we just set to default
+    GetToolManager()->SelectActiveToolType(EToolSide::Left, LineToolName);
+    GetToolManager()->ActivateTool(EToolSide::Left);
+
+    ARoadActor::bIsInRoadNetworkMode = true;
+}
+
+void URoadNetworkToolEditorMode::Exit()
+{
+    UEdMode::Exit();
+
+    ARoadActor::bIsInRoadNetworkMode = false;
 }
 
 void URoadNetworkToolEditorMode::CreateToolkit()
 {
-	Toolkit = MakeShareable(new FRoadNetworkToolEditorModeToolkit);
+    Toolkit = MakeShareable(new FRoadNetworkToolEditorModeToolkit);
 }
 
 TMap<FName, TArray<TSharedPtr<FUICommandInfo>>> URoadNetworkToolEditorMode::GetModeCommands() const

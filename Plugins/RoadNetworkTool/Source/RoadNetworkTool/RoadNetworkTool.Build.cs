@@ -22,7 +22,8 @@ public class RoadNetworkTool : ModuleRules
             new string[] {
                 "Slate",
                 "SlateCore",
-                "InputCore"
+                "InputCore",
+                "ProceduralMeshComponent"
             }
         );
 
