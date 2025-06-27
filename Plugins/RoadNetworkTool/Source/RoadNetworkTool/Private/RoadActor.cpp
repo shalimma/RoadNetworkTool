@@ -36,7 +36,7 @@ void ARoadActor::Tick(float DeltaTime)
     {
         if (bIsInRoadNetworkMode && EnableRoadDebugLine)
         {
-            DrawDebugRoadWidth(RoadWidth, RoadThickness, FColor::Green, 0.0f);
+            DrawDebugRoadWidth(RoadWidth, RoadThickness, FColor::Green, 10.0f);
         }
     }
 #endif
@@ -207,10 +207,10 @@ TArray<FLineSegment> ARoadActor::GenerateRectangularRoadSections(const TArray<US
             LineSegments.Add(FLineSegment(Corner4, Corner1, SplineComponent));
 
             // Optional debug lines:
-            /*
+            
             DrawDebugLine(GetWorld(), Corner2, Corner3, FColor::Green, false, 5.0f, 0, LineThickness);
             DrawDebugLine(GetWorld(), Corner4, Corner1, FColor::Green, false, 5.0f, 0, LineThickness);
-            */
+            
         }
     }
 
@@ -282,6 +282,398 @@ TArray<FVector> ARoadActor::FindInterPointsFromInterNode(const TArray<FLineSegme
 
     return IntersectionPoints;
 }
+
+TArray<FVector> ARoadActor::FindNonInterPointsFromInterNode(const TArray<FLineSegment>& LineSegments, const FIntersectionNode& IntersectionNode)
+{
+    TArray<FVector> NonIntersectionPoints;
+    FVector IntersectionNodePosition = IntersectionNode.IntersectionPoint;
+    TSet<int32> IntersectingSegments;
+
+    // Highlight the intersection node itself
+    DrawDebugSphere(GetWorld(), IntersectionNodePosition, 25.f, 12, FColor::Red, false, 5.f);
+
+    // First pass: find intersecting segments
+    for (int32 i = 0; i < LineSegments.Num(); ++i)
+    {
+        for (int32 j = i + 1; j < LineSegments.Num(); ++j)
+        {
+            FVector Intersection;
+            if (LineIntersection(LineSegments[i].Start, LineSegments[i].End, LineSegments[j].Start, LineSegments[j].End, Intersection))
+            {
+                IntersectingSegments.Add(i);
+                IntersectingSegments.Add(j);
+
+                // can commnet out draw intersecting segment lines
+                DrawDebugLine(GetWorld(), LineSegments[i].Start, LineSegments[i].End, FColor::Magenta, false, 5.f, 0, 2.f);
+                DrawDebugLine(GetWorld(), LineSegments[j].Start, LineSegments[j].End, FColor::Magenta, false, 5.f, 0, 2.f);
+            }
+        }
+    }
+
+    // Second pass: get endpoint closest to the intersection node
+    for (int32 i = 0; i < LineSegments.Num(); ++i)
+    {
+        if (IntersectingSegments.Contains(i))
+        {
+            float StartDistance = FVector::Dist(IntersectionNodePosition, LineSegments[i].Start);
+            float EndDistance = FVector::Dist(IntersectionNodePosition, LineSegments[i].End);
+
+            FVector ChosenPoint = (StartDistance < EndDistance) ? LineSegments[i].Start : LineSegments[i].End;
+            NonIntersectionPoints.Add(ChosenPoint);
+
+            // Debug: highlight chosen points
+            DrawDebugSphere(GetWorld(), ChosenPoint, 20.f, 12, FColor::Black, false, 5.f);
+            DrawDebugLine(GetWorld(), IntersectionNodePosition, ChosenPoint, FColor::Cyan, false, 5.f, 0, 1.f);
+        }
+    }
+
+    return NonIntersectionPoints;
+}
+
+
+TArray<FVector> ARoadActor::FindPointsFromNonInterNode(const TArray<FNonIntersectionNode>& NonIntersectionNodes, float Width) const
+{
+    TArray<FVector> DeadEndPoints;
+    const float DeadEndThreshold = 1.0f;
+
+    for (const FNonIntersectionNode& Node : NonIntersectionNodes)
+    {
+        FVector SplinePoint = Node.NonIntersectionPoint;
+        FVector Tangent = FVector::ZeroVector;
+        FVector RightVector = FVector::ZeroVector;
+
+        for (USplineComponent* Spline : Node.NonIntersectingSplines)
+        {
+            if (!Spline) continue;
+
+            const int32 NumPoints = Spline->GetNumberOfSplinePoints();
+            for (int32 PointIndex = 0; PointIndex < NumPoints; PointIndex++)
+            {
+                FVector Point = Spline->GetLocationAtSplinePoint(PointIndex, ESplineCoordinateSpace::World);
+
+                if (FVector::DistSquared(SplinePoint, Point) <= FMath::Square(DeadEndThreshold))
+                {
+                    Tangent = Spline->GetTangentAtSplinePoint(PointIndex, ESplineCoordinateSpace::World).GetSafeNormal();
+                    RightVector = FVector::CrossProduct(Tangent, FVector::UpVector).GetSafeNormal() * Width * 0.5f;
+                    break;
+                }
+            }
+
+            if (!Tangent.IsZero())
+                break;
+        }
+
+        FVector LeftPoint = SplinePoint - RightVector;
+        FVector RightPoint = SplinePoint + RightVector;
+        DeadEndPoints.Add(LeftPoint);
+        DeadEndPoints.Add(RightPoint);
+    }
+
+    return DeadEndPoints;
+}
+
+
+void OrderPointsClockwise(TArray<FVector>& Points)
+{
+    if (Points.Num() < 3)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Not enough points to order."));
+        return;
+    }
+
+    FVector Centroid(0, 0, 0);
+    for (const FVector& Point : Points)
+    {
+        Centroid += Point;
+    }
+    Centroid /= Points.Num();
+
+    Points.Sort([Centroid](const FVector& A, const FVector& B)
+        {
+            float AngleA = FMath::Atan2(A.Y - Centroid.Y, A.X - Centroid.X);
+            float AngleB = FMath::Atan2(B.Y - Centroid.Y, B.X - Centroid.X);
+            return AngleA > AngleB;
+        });
+}
+
+TArray<FVector> ARoadActor::FindLineSegmentPoints(const TArray<FLineSegment>& LineSegments, USplineComponent* SplineComponent, const TArray<FVector>& InRoadPoints)
+{
+    TArray<FVector> OverlappingPoints;
+    float Threshold = 10.0f;
+    for (const FLineSegment& LineSegment : LineSegments)
+    {
+        if (LineSegment.SplineComponent != SplineComponent) continue;
+
+        FVector LineDirection = LineSegment.End - LineSegment.Start;
+        float LineLengthSquared = LineDirection.SizeSquared();
+        if (LineLengthSquared <= KINDA_SMALL_NUMBER)
+            continue;
+
+        LineDirection.Normalize();
+
+        for (const FVector& RoadPoint : InRoadPoints)
+        {
+            FVector StartToPoint = RoadPoint - LineSegment.Start;
+            float Projection = FVector::DotProduct(StartToPoint, LineDirection);
+            FVector ClosestPoint = LineSegment.Start + FMath::Clamp(Projection, 0.0f, FVector::Dist(LineSegment.Start, LineSegment.End)) * LineDirection;
+
+            if (FVector::DistSquared(ClosestPoint, RoadPoint) <= FMath::Square(Threshold))
+            {
+                OverlappingPoints.Add(RoadPoint);
+            }
+        }
+    }
+
+    return OverlappingPoints;
+}
+
+void ARoadActor::DestroyProceduralMeshes()
+{
+    
+    for (UProceduralMeshComponent* ProcMeshComponent : ProceduralMeshes)
+    {
+        if (ProcMeshComponent)
+        {
+            ProcMeshComponent->DestroyComponent();
+        }
+    }
+    ProceduralMeshes.Empty();
+}
+
+void ARoadActor::GenerateMeshFromPoints(const TArray<FVector>& Points, float Thickness)
+{
+    if (Points.Num() < 3)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Not enough points to create a mesh."));
+        return;
+    }
+
+    TArray<FVector> OrderedPoints = Points;
+    OrderPointsClockwise(OrderedPoints);
+
+    UProceduralMeshComponent* ProcMeshComponent = NewObject<UProceduralMeshComponent>(this);
+    ProcMeshComponent->SetupAttachment(RootComponent);
+    ProcMeshComponent->RegisterComponentWithWorld(GetWorld());
+
+    TArray<FVector> Vertices;
+    TArray<int32> Triangles;
+    TArray<FVector> Normals;
+    TArray<FVector2D> UVs;
+    TArray<FColor> VertexColors;
+    TArray<FProcMeshTangent> Tangents;
+
+    int32 NumVertices = OrderedPoints.Num();
+    float UVscale = 0.1f;
+
+    // Add bottom vertices
+    for (int32 i = 1; i < NumVertices - 1; ++i)
+    {
+        if (Thickness > 0.0f)
+        {
+            // First triangle vertex
+            Vertices.Add(OrderedPoints[0]);
+            Vertices.Add(OrderedPoints[i + 1]);
+            Vertices.Add(OrderedPoints[i]);
+
+            // Add UVs for these vertices
+            UVs.Add(FVector2D(OrderedPoints[0].X, OrderedPoints[0].Y) * UVscale);
+            UVs.Add(FVector2D(OrderedPoints[i + 1].X, OrderedPoints[i + 1].Y) * UVscale);
+            UVs.Add(FVector2D(OrderedPoints[i].X, OrderedPoints[i].Y) * UVscale);
+
+            // Triangles
+            int32 VertIndex = Vertices.Num() - 3;
+            Triangles.Add(VertIndex);
+            Triangles.Add(VertIndex + 1);
+            Triangles.Add(VertIndex + 2);
+
+            // Calculate normal for this triangle
+            FVector Edge1 = Vertices[VertIndex + 1] - Vertices[VertIndex];
+            FVector Edge2 = Vertices[VertIndex + 2] - Vertices[VertIndex];
+            FVector Normal = FVector::CrossProduct(Edge2, Edge1).GetSafeNormal();
+
+            Normals.Add(Normal);
+            Normals.Add(Normal);
+            Normals.Add(Normal);
+
+            // Calculate tangents for this triangle
+            FVector TangentX = (Vertices[VertIndex + 1] - Vertices[VertIndex]).GetSafeNormal();
+            FVector TangentY = FVector::CrossProduct(Normal, TangentX).GetSafeNormal();
+            FProcMeshTangent Tangent = FProcMeshTangent(TangentX, false);
+
+            Tangents.Add(Tangent);
+            Tangents.Add(Tangent);
+            Tangents.Add(Tangent);
+        }
+        else
+        {
+            // First triangle vertex
+            Vertices.Add(OrderedPoints[0]);
+            Vertices.Add(OrderedPoints[i]);
+            Vertices.Add(OrderedPoints[i + 1]);
+
+            // Triangles
+            int32 VertIndex = Vertices.Num() - 3;
+            Triangles.Add(VertIndex);
+            Triangles.Add(VertIndex + 1);
+            Triangles.Add(VertIndex + 2);
+        }
+    }
+
+    // Create triangles for the top face (if thickness > 0)
+    if (Thickness > 0.0f)
+    {
+        for (int32 i = 1; i < NumVertices - 1; ++i)
+        {
+            FVector TopOffset = FVector(0, 0, Thickness);
+
+            // First triangle vertex
+            Vertices.Add(OrderedPoints[0] + TopOffset);
+            Vertices.Add(OrderedPoints[i] + TopOffset);
+            Vertices.Add(OrderedPoints[i + 1] + TopOffset);
+
+            // Add UVs for these vertices
+            UVs.Add(FVector2D(OrderedPoints[0].X, OrderedPoints[0].Y) * UVscale);
+            UVs.Add(FVector2D(OrderedPoints[i].X, OrderedPoints[i].Y) * UVscale);
+            UVs.Add(FVector2D(OrderedPoints[i + 1].X, OrderedPoints[i + 1].Y) * UVscale);
+
+            // Triangles
+            int32 VertIndex = Vertices.Num() - 3;
+            Triangles.Add(VertIndex);
+            Triangles.Add(VertIndex + 1);
+            Triangles.Add(VertIndex + 2);
+
+            // Calculate normal for this triangle
+            FVector Edge1 = Vertices[VertIndex + 1] - Vertices[VertIndex];
+            FVector Edge2 = Vertices[VertIndex + 2] - Vertices[VertIndex];
+            FVector Normal = FVector::CrossProduct(Edge2, Edge1).GetSafeNormal();
+
+            Normals.Add(Normal);
+            Normals.Add(Normal);
+            Normals.Add(Normal);
+
+            // Calculate tangents for this triangle
+            FVector TangentX = (Vertices[VertIndex + 1] - Vertices[VertIndex]).GetSafeNormal();
+            FVector TangentY = FVector::CrossProduct(Normal, TangentX).GetSafeNormal();
+            FProcMeshTangent Tangent = FProcMeshTangent(TangentX, false);
+
+            Tangents.Add(Tangent);
+            Tangents.Add(Tangent);
+            Tangents.Add(Tangent);
+        }
+
+        // Create side faces
+        for (int32 i = 0; i < NumVertices; ++i)
+        {
+            int32 NextIndex = (i + 1) % NumVertices;
+            FVector TopOffset = FVector(0, 0, Thickness);
+
+            // First triangle
+            Vertices.Add(OrderedPoints[i]);
+            Vertices.Add(OrderedPoints[NextIndex]);
+            Vertices.Add(OrderedPoints[NextIndex] + TopOffset);
+
+            Vertices.Add(OrderedPoints[NextIndex] + TopOffset);
+            Vertices.Add(OrderedPoints[i] + TopOffset);
+            Vertices.Add(OrderedPoints[i]);
+
+            // UVs
+            UVs.Add(FVector2D(OrderedPoints[i].X, OrderedPoints[i].Y) * UVscale);
+            UVs.Add(FVector2D(OrderedPoints[NextIndex].X, OrderedPoints[NextIndex].Y) * UVscale);
+            UVs.Add(FVector2D(OrderedPoints[NextIndex].X, OrderedPoints[NextIndex].Y) * UVscale);
+
+            UVs.Add(FVector2D(OrderedPoints[NextIndex].X, OrderedPoints[NextIndex].Y) * UVscale);
+            UVs.Add(FVector2D(OrderedPoints[i].X, OrderedPoints[i].Y) * UVscale);
+            UVs.Add(FVector2D(OrderedPoints[i].X, OrderedPoints[i].Y) * UVscale);
+
+            // Triangles
+            int32 VertIndex = Vertices.Num() - 6;
+            Triangles.Add(VertIndex);
+            Triangles.Add(VertIndex + 1);
+            Triangles.Add(VertIndex + 2);
+            Triangles.Add(VertIndex + 3);
+            Triangles.Add(VertIndex + 4);
+            Triangles.Add(VertIndex + 5);
+
+            // Calculate normal for each face
+            for (int j = 0; j < 2; ++j)
+            {
+                FVector FaceEdge1 = Vertices[VertIndex + j * 3 + 1] - Vertices[VertIndex + j * 3];
+                FVector FaceEdge2 = Vertices[VertIndex + j * 3 + 2] - Vertices[VertIndex + j * 3];
+                FVector FaceNormal = FVector::CrossProduct(FaceEdge2, FaceEdge1).GetSafeNormal();
+
+                Normals.Add(FaceNormal);
+                Normals.Add(FaceNormal);
+                Normals.Add(FaceNormal);
+
+                FVector TangentX = (Vertices[VertIndex + j * 3 + 1] - Vertices[VertIndex + j * 3]).GetSafeNormal();
+                FVector TangentY = FVector::CrossProduct(FaceNormal, TangentX).GetSafeNormal();
+                FProcMeshTangent Tangent = FProcMeshTangent(TangentX, false);
+
+                Tangents.Add(Tangent);
+                Tangents.Add(Tangent);
+                Tangents.Add(Tangent);
+            }
+        }
+    }
+
+    ProcMeshComponent->CreateMeshSection(0, Vertices, Triangles, Normals, UVs, VertexColors, Tangents, true);
+
+    UMaterialInterface* Material = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/LevelPrototyping/Materials/MI_Solid_Blue.MI_Solid_Blue"));
+    if (Material)
+    {
+        ProcMeshComponent->SetMaterial(0, Material);
+    }
+
+    ProceduralMeshes.Add(ProcMeshComponent);
+}
+
+void ARoadActor::GenerateRoadMesh()
+{
+    DestroyProceduralMeshes();
+
+    TArray<FIntersectionNode> IntersectionNodes = this->FindSplineIntersectionNodes();
+    TArray<FVector> AllRoadPoints;
+    TArray<FLineSegment> AllLineSegments = GenerateRectangularRoadSections(SplineComponents, RoadWidth);
+
+    for (const FIntersectionNode& IntersectionNode : IntersectionNodes)
+    {
+        TArray<FLineSegment> LineSegments = GenerateRectangularRoadSections(IntersectionNode.IntersectingSplines, RoadWidth);
+
+        TArray<FVector> IntersectionPoints = FindInterPointsFromInterNode(LineSegments, IntersectionNode.IntersectionPoint);
+        TArray<FVector> NonIntersectionPoints = FindNonInterPointsFromInterNode(LineSegments, IntersectionNode.IntersectionPoint);
+
+        TArray<FVector> IntersectionNodePoints;
+        IntersectionNodePoints.Empty();
+        IntersectionNodePoints.Append(IntersectionPoints);
+        IntersectionNodePoints.Append(NonIntersectionPoints);
+
+        AllRoadPoints.Append(IntersectionNodePoints);
+
+        for (const FVector& IntersectionNodePoint : IntersectionNodePoints)
+        {
+            DrawDebugSphere(this->GetWorld(), IntersectionNodePoint, 25.0f, 12, FColor::Blue, false, 1.0f);
+        }
+
+        GenerateMeshFromPoints(IntersectionNodePoints, RoadThickness);
+    }
+
+    TArray<FNonIntersectionNode> NonIntersectionNodes = this->FindSplineNonIntersectionNodes();
+    TArray<FVector> DeadEndPoints = FindPointsFromNonInterNode(NonIntersectionNodes, RoadWidth);
+    AllRoadPoints.Append(DeadEndPoints);
+
+    for (const FVector& DeadEndPoint : DeadEndPoints)
+    {
+        DrawDebugSphere(this->GetWorld(), DeadEndPoint, 25.0f, 12, FColor::Yellow, false, 1.0f);
+    }
+
+    for (USplineComponent* SplineComponent : SplineComponents)
+    {
+        TArray<FVector> LineSegmentPoints = FindLineSegmentPoints(AllLineSegments, SplineComponent, AllRoadPoints);
+        GenerateMeshFromPoints(LineSegmentPoints, RoadThickness);
+    }
+}
+
+
 
 bool ARoadActor::ShouldTickIfViewportsOnly() const
 {

@@ -1,3 +1,5 @@
+// RoadNetworkToolLineToolCustomization.cpp
+
 #include "RoadNetworkToolLineToolCustomization.h"
 #include "DetailLayoutBuilder.h"
 #include "DetailWidgetRow.h"
@@ -31,16 +33,32 @@ void FRoadNetworkToolLineToolCustomization::CustomizeDetails(IDetailLayoutBuilde
 
     // Add the "Create" button
     Category.AddCustomRow(FText::FromString("Create Button"))
-    .ValueContent()
-    [
-        SNew(SButton)
-        .Text(FText::FromString("Create"))
-        .OnClicked(FOnClicked::CreateSP(this, &FRoadNetworkToolLineToolCustomization::OnCreateButtonClicked))
-    ];
+        .ValueContent()
+        [
+            SNew(SButton)
+                .Text(FText::FromString("Create"))
+                .OnClicked(FOnClicked::CreateSP(this, &FRoadNetworkToolLineToolCustomization::OnCreateButtonClicked))
+        ];
 }
 
 FReply FRoadNetworkToolLineToolCustomization::OnCreateButtonClicked()
 {
+    // Get the currently selected actors in the editor
+    USelection* SelectedActors = GEditor->GetSelectedActors();
+
+    if (SelectedActors)
+    {
+        for (FSelectionIterator It(*SelectedActors); It; ++It)
+        {
+            ARoadActor* SelectedRoadActor = Cast<ARoadActor>(*It);
+            if (SelectedRoadActor && SelectedRoadActor->RoadWidth > 0)
+            {
+                SelectedRoadActor->GenerateRoadMesh();
+                break;
+            }
+        }
+    }
+
     // Handle the button click event here
     // You can call functions on the tool or do other actions
     UE_LOG(LogTemp, Warning, TEXT("Create button clicked!"));

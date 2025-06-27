@@ -156,13 +156,13 @@ void URoadNetworkToolLineTool::OnClickPress(const FInputDeviceRay& PressPos)
             return;
         }
 
-        if (IsLineIntersectingSpline(OriginPoint, EndPoint))
+        /*if (IsLineIntersectingSpline(OriginPoint, EndPoint))
         {
             UE_LOG(LogTemp, Warning, TEXT("Line intersects with an existing spline. Spline not created."));
             OriginPoint = EndPoint;
             CurrentSplineState = ESplineCreationState::Extending;
             return;
-        }
+        }*/
 
         CreateSpline();
         CurrentSplineState = ESplineCreationState::Extending;
@@ -175,13 +175,16 @@ void URoadNetworkToolLineTool::OnClickPress(const FInputDeviceRay& PressPos)
         if (GetNearSplinePoint(ClickLocation, NearPointIndex, NearPointLocation, Properties->SnapThreshold))
         {
             OriginPoint = NearPointLocation;
-        }
-        else
-        {
-            OriginPoint = ClickLocation; // fallback to raw click
-        }
+
             DrawDebugSphereEditor(OriginPoint);
             CurrentSplineState = ESplineCreationState::SettingEndPoint;
+            
+        }
+        //else
+        //{
+        //    OriginPoint = ClickLocation; // fallback to raw click
+        //}
+            
         
     }
 }
@@ -216,6 +219,14 @@ void URoadNetworkToolLineTool::CreateSpline()
 
         FName UniqueName = MakeUniqueObjectName(TargetWorld, ARoadActor::StaticClass(), FName(TEXT("RoadNetwork")));
         SplineActor->SetActorLabel(UniqueName.ToString());
+
+        // Ensure RootComponent exists
+        if (!SplineActor->GetRootComponent())
+        {
+            USceneComponent* Root = NewObject<USceneComponent>(SplineActor, TEXT("RootComponent"));
+            Root->RegisterComponent();
+            SplineActor->SetRootComponent(Root);
+        }
     }
 
     USplineComponent* SplineComponent = NewObject<USplineComponent>(SplineActor);
@@ -227,17 +238,24 @@ void URoadNetworkToolLineTool::CreateSpline()
     SplineComponent->AddSplinePoint(EndPoint, ESplineCoordinateSpace::World);
     SplineComponent->UpdateSpline();
 
+    // Add to actor's array explicitly
+    SplineActor->SplineComponents.Add(SplineComponent);
+
+
     if (GEditor)
     {
         GEditor->SelectNone(true, true, false);
         GEditor->SelectActor(SplineActor, true, true);
     }
 
+    // Store component references and apply properties
     OriginPoint = FVector::ZeroVector;
     CurrentSplineComponent = SplineComponent;
+    SplineActor->AddInstanceComponent(SplineComponent); // Optional but safe
     SplineComponents = SplineActor->GetSplineComponents();
     ApplyProperties(SplineActor);
 }
+
 
 bool URoadNetworkToolLineTool::GetNearSplinePoint(const FVector& Location, int32& OutPointIndex, FVector& OutPointLocation, float Threshold)
 {
@@ -265,6 +283,10 @@ bool URoadNetworkToolLineTool::GetNearSplinePoint(const FVector& Location, int32
             }
         }
     }
+
+    // Draw a debug sphere at the click location using the threshold as radius
+    FColor SphereColor = bFoundNearPoint ? FColor::Green : FColor::Red;
+    DrawDebugSphere(TargetWorld, Location, Threshold, 16, SphereColor, false, 2.0f);
 
     return bFoundNearPoint;
 }
@@ -363,6 +385,7 @@ bool URoadNetworkToolLineTool::DoLinesIntersect(const FVector& A1, const FVector
     float Denominator = PerpDot(DirA, DirB);
     if (FMath::IsNearlyZero(Denominator))
     {
+        // If lines are parallel or collinear
         return false;
     }
 
