@@ -634,6 +634,10 @@ void ARoadActor::GenerateMeshFromPoints(const TArray<FVector>& Points, float Thi
     }
 
     ProceduralMeshes.Add(ProcMeshComponent);
+
+    // Set Collision
+    ProcMeshComponent->SetCollisionProfileName(TEXT("Custom"));
+    ProcMeshComponent->SetCollisionResponseToChannel(ECC_Visibility, ECR_Ignore);
 }
 
 void ARoadActor::GenerateRoadMesh()
