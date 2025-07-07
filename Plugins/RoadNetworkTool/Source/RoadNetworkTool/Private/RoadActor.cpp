@@ -303,7 +303,7 @@ TArray<FVector> ARoadActor::FindNonInterPointsFromInterNode(const TArray<FLineSe
                 IntersectingSegments.Add(i);
                 IntersectingSegments.Add(j);
 
-                // can commnet out draw intersecting segment lines
+                // can comment out draw intersecting segment lines
                 DrawDebugLine(GetWorld(), LineSegments[i].Start, LineSegments[i].End, FColor::Magenta, false, 5.f, 0, 2.f);
                 DrawDebugLine(GetWorld(), LineSegments[j].Start, LineSegments[j].End, FColor::Magenta, false, 5.f, 0, 2.f);
             }
@@ -313,17 +313,26 @@ TArray<FVector> ARoadActor::FindNonInterPointsFromInterNode(const TArray<FLineSe
     // Second pass: get endpoint closest to the intersection node
     for (int32 i = 0; i < LineSegments.Num(); ++i)
     {
-        if (IntersectingSegments.Contains(i))
+        if (!IntersectingSegments.Contains(i))
         {
             float StartDistance = FVector::Dist(IntersectionNodePosition, LineSegments[i].Start);
             float EndDistance = FVector::Dist(IntersectionNodePosition, LineSegments[i].End);
 
-            FVector ChosenPoint = (StartDistance < EndDistance) ? LineSegments[i].Start : LineSegments[i].End;
-            NonIntersectionPoints.Add(ChosenPoint);
+            //FVector ChosenPoint = (StartDistance < EndDistance) ? LineSegments[i].Start : LineSegments[i].End;
+            //NonIntersectionPoints.Add(ChosenPoint);
 
-            // Debug: highlight chosen points
-            DrawDebugSphere(GetWorld(), ChosenPoint, 20.f, 12, FColor::Black, false, 5.f);
-            DrawDebugLine(GetWorld(), IntersectionNodePosition, ChosenPoint, FColor::Cyan, false, 5.f, 0, 1.f);
+            //// Debug: highlight chosen points
+            //DrawDebugSphere(GetWorld(), ChosenPoint, 20.f, 12, FColor::Black, false, 5.f);
+            //DrawDebugLine(GetWorld(), IntersectionNodePosition, ChosenPoint, FColor::Cyan, false, 5.f, 0, 1.f);
+
+            if (StartDistance < EndDistance)
+            {
+                NonIntersectionPoints.Add(LineSegments[i].Start);
+            }
+            else
+            {
+                NonIntersectionPoints.Add(LineSegments[i].End);
+            }
         }
     }
 
